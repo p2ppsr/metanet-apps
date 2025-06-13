@@ -119,11 +119,10 @@ export class AppCatalog {
     // --- 3. Prepare spending of previous output -------------------------
     const pushdrop = new PushDrop(this.wallet)
     const prevOutpoint = `${prev.token.txid}.${prev.token.outputIndex}` as const
-    const loadedBEEF = Beef.fromBinary(prev.token.beef as number[])
 
     const { signableTransaction } = await this.wallet.createAction({
       description: 'AppCatalog - update app',
-      inputBEEF: loadedBEEF.toBinary(),
+      inputBEEF: prev.token.beef,
       inputs: [
         {
           outpoint: prevOutpoint,
@@ -164,7 +163,7 @@ export class AppCatalog {
     const broadcaster = new TopicBroadcaster([this.overlayTopic], {
       networkPreset: this.networkPreset ?? (await this.wallet.getNetwork({})).network
     })
-    return broadcaster.broadcast(transaction)
+    return await broadcaster.broadcast(transaction)
   }
 
   /* ──────────────────────────────  Remove  ───────────────────────────── */
@@ -180,25 +179,20 @@ export class AppCatalog {
     if (!prev.token.beef) throw new Error('App token must contain BEEF to remove')
 
     const prevOutpoint = `${prev.token.txid}.${prev.token.outputIndex}` as const
-    const loadedBEEF = Beef.fromBinary(prev.token.beef as number[])
-
     const { signableTransaction } = await this.wallet.createAction({
       description: 'AppCatalog - remove app',
-      inputBEEF: loadedBEEF.toBinary(),
+      inputBEEF: prev.token.beef,
       inputs: [{
         outpoint: prevOutpoint,
         unlockingScriptLength: 74,
         inputDescription: 'Redeem app token'
       }],
-      options: { acceptDelayedBroadcast: false, randomizeOutputs: false }
+      options: { acceptDelayedBroadcast: this.acceptDelayedBroadcast, randomizeOutputs: false }
     })
     if (!signableTransaction) throw new Error('Unable to redeem app token')
 
     const unlocker = new PushDrop(this.wallet).unlock(PROTOCOL_ID, this.keyID, 'anyone')
-    const unlockingScript = await unlocker.sign(
-      Transaction.fromBEEF(signableTransaction.tx),
-      0
-    )
+    const unlockingScript = await unlocker.sign(Transaction.fromBEEF(signableTransaction.tx), 0)
 
     const { tx } = await this.wallet.signAction({
       reference: signableTransaction.reference,
@@ -212,7 +206,7 @@ export class AppCatalog {
     const broadcaster = new TopicBroadcaster([this.overlayTopic], {
       networkPreset: this.networkPreset ?? (await this.wallet.getNetwork({})).network
     })
-    return broadcaster.broadcast(transaction)
+    return await broadcaster.broadcast(transaction)
   }
 
   /* ──────────────────────────────  Find  ─────────────────────────────── */
