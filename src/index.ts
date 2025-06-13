@@ -173,6 +173,21 @@ export class AppCatalog {
   /* ──────────────────────────────  Find  ─────────────────────────────── */
   /**
    * Finds apps published to the overlay by querying the lookup service.
+   * 
+   * Supports pagination and sorting through the following parameters:
+   * - `limit`: Maximum number of results to return (default: 50)
+   * - `skip`: Number of results to skip for pagination (default: 0)
+   * - `sortOrder`: Sort direction - 'asc' (oldest first) or 'desc' (newest first, default)
+   * 
+   * @example
+   * // Get the first page of 20 results
+   * const page1 = await appCatalog.findApps({ limit: 20, skip: 0 });
+   * 
+   * // Get the second page
+   * const page2 = await appCatalog.findApps({ limit: 20, skip: 20 });
+   * 
+   * // Sort by oldest first
+   * const oldestFirst = await appCatalog.findApps({ sortOrder: 'asc' });
    */
   async findApps(
     query: AppCatalogQuery = {},
