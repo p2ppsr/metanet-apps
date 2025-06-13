@@ -99,19 +99,16 @@ export class AppCatalog {
    */
   async updateApp(
     prev: PublishedApp,
-    newMetadata: PublishedAppMetadata,
-    opts: { wallet?: WalletInterface } = {}
-  ): Promise<Transaction | BroadcastResponse | BroadcastFailure> {
+    newMetadata: PublishedAppMetadata
+  ): Promise<BroadcastResponse | BroadcastFailure> {
     if (!prev.token.beef) throw new Error('App token must contain BEEF to update')
-
-    const wallet = opts.wallet ?? this.wallet
 
     // --- 1. Serialize new metadata --------------------------------------
     const jsonPayload = JSON.stringify(newMetadata)
     const payloadBytes = Utils.toArray(jsonPayload, 'utf8')
 
     // --- 2. Build new PushDrop locking script ---------------------------
-    const newLockingScript = await new PushDrop(wallet).lock(
+    const newLockingScript = await new PushDrop(this.wallet).lock(
       [payloadBytes],
       PROTOCOL_ID,
       this.keyID,
@@ -120,11 +117,11 @@ export class AppCatalog {
     )
 
     // --- 3. Prepare spending of previous output -------------------------
-    const pushdrop = new PushDrop(wallet)
+    const pushdrop = new PushDrop(this.wallet)
     const prevOutpoint = `${prev.token.txid}.${prev.token.outputIndex}` as const
     const loadedBEEF = Beef.fromBinary(prev.token.beef as number[])
 
-    const { signableTransaction } = await wallet.createAction({
+    const { signableTransaction } = await this.wallet.createAction({
       description: 'AppCatalog - update app',
       inputBEEF: loadedBEEF.toBinary(),
       inputs: [
@@ -154,7 +151,7 @@ export class AppCatalog {
     )
 
     // --- 5. Sign and finalize -------------------------------------------
-    const { tx } = await wallet.signAction({
+    const { tx } = await this.wallet.signAction({
       reference: signableTransaction.reference,
       spends: { 0: { unlockingScript: unlockingScript.toHex() } }
     })
@@ -165,7 +162,55 @@ export class AppCatalog {
 
     // --- 6. Broadcast through overlay -----------------------------------
     const broadcaster = new TopicBroadcaster([this.overlayTopic], {
-      networkPreset: this.networkPreset ?? (await wallet.getNetwork({})).network
+      networkPreset: this.networkPreset ?? (await this.wallet.getNetwork({})).network
+    })
+    return broadcaster.broadcast(transaction)
+  }
+
+  /* ──────────────────────────────  Remove  ───────────────────────────── */
+  /**
+   * Removes an app listing from the overlay by spending its previous PushDrop output.
+   * 
+   * @param prev The previous app listing to remove.
+   * @returns The BroadcastResponse or BroadcastFailure from the overlay.
+   */
+  async removeApp(
+    prev: PublishedApp
+  ): Promise<BroadcastResponse | BroadcastFailure> {
+    if (!prev.token.beef) throw new Error('App token must contain BEEF to remove')
+
+    const prevOutpoint = `${prev.token.txid}.${prev.token.outputIndex}` as const
+    const loadedBEEF = Beef.fromBinary(prev.token.beef as number[])
+
+    const { signableTransaction } = await this.wallet.createAction({
+      description: 'AppCatalog - remove app',
+      inputBEEF: loadedBEEF.toBinary(),
+      inputs: [{
+        outpoint: prevOutpoint,
+        unlockingScriptLength: 74,
+        inputDescription: 'Redeem app token'
+      }],
+      options: { acceptDelayedBroadcast: false, randomizeOutputs: false }
+    })
+    if (!signableTransaction) throw new Error('Unable to redeem app token')
+
+    const unlocker = new PushDrop(this.wallet).unlock(PROTOCOL_ID, this.keyID, 'anyone')
+    const unlockingScript = await unlocker.sign(
+      Transaction.fromBEEF(signableTransaction.tx),
+      0
+    )
+
+    const { tx } = await this.wallet.signAction({
+      reference: signableTransaction.reference,
+      spends: { 0: { unlockingScript: unlockingScript.toHex() } }
+    })
+    if (!tx) throw new Error('Unable to redeem app token')
+
+    const transaction = Transaction.fromAtomicBEEF(tx)
+
+    // Broadcast to overlay
+    const broadcaster = new TopicBroadcaster([this.overlayTopic], {
+      networkPreset: this.networkPreset ?? (await this.wallet.getNetwork({})).network
     })
     return broadcaster.broadcast(transaction)
   }
