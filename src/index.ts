@@ -18,15 +18,14 @@ import { AppCatalogOptions, PublishedAppMetadata, AppCatalogQuery, PublishedApp 
  * Constants
  * ────────────────────────────────────────────────────────── */
 const PROTOCOL_ID: WalletProtocol = [1, 'metanet apps']
+const DEFAULT_KEY_ID = '1'
 const DEFAULT_OVERLAY_TOPIC = 'tm_apps'
 const DEFAULT_LOOKUP_SERVICE = 'ls_apps'
-const DEFAULT_KEY_ID = '1'
 
 /* ────────────────────────────────────────────────────────────
  * AppCatalog
  * ────────────────────────────────────────────────────────── */
 export class AppCatalog {
-  private readonly keyID: string
   private readonly overlayTopic: string
   private readonly overlayService: string
   private readonly wallet: WalletInterface
@@ -34,7 +33,6 @@ export class AppCatalog {
   private readonly acceptDelayedBroadcast: boolean
 
   constructor(opts: AppCatalogOptions) {
-    this.keyID = opts.keyID ?? DEFAULT_KEY_ID
     this.overlayTopic = opts.overlayTopic ?? DEFAULT_OVERLAY_TOPIC
     this.overlayService = opts.overlayService ?? DEFAULT_LOOKUP_SERVICE
     this.wallet = opts.wallet ?? new WalletClient()
@@ -62,7 +60,7 @@ export class AppCatalog {
     const lockingScript = await new PushDrop(wallet).lock(
       [payloadBytes],
       PROTOCOL_ID,
-      this.keyID,
+      DEFAULT_KEY_ID,
       'anyone',
       true
     )
@@ -111,7 +109,7 @@ export class AppCatalog {
     const newLockingScript = await new PushDrop(this.wallet).lock(
       [payloadBytes],
       PROTOCOL_ID,
-      this.keyID,
+      DEFAULT_KEY_ID,
       'anyone',
       true
     )
@@ -143,7 +141,7 @@ export class AppCatalog {
     if (!signableTransaction) throw new Error('Unable to create update transaction')
 
     // --- 4. Produce unlocking script ------------------------------------
-    const unlocker = pushdrop.unlock(PROTOCOL_ID, this.keyID, 'anyone')
+    const unlocker = pushdrop.unlock(PROTOCOL_ID, DEFAULT_KEY_ID, 'anyone')
     const unlockingScript = await unlocker.sign(
       Transaction.fromBEEF(signableTransaction.tx),
       0
@@ -191,7 +189,7 @@ export class AppCatalog {
     })
     if (!signableTransaction) throw new Error('Unable to redeem app token')
 
-    const unlocker = new PushDrop(this.wallet).unlock(PROTOCOL_ID, this.keyID, 'anyone')
+    const unlocker = new PushDrop(this.wallet).unlock(PROTOCOL_ID, DEFAULT_KEY_ID, 'anyone')
     const unlockingScript = await unlocker.sign(Transaction.fromBEEF(signableTransaction.tx), 0)
 
     const { tx } = await this.wallet.signAction({

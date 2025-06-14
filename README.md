@@ -102,7 +102,6 @@ The main class for interacting with the Metanet Apps ecosystem.
 new AppCatalog(options: AppCatalogOptions)
 ```
 
-- `options.keyID?`: Optional identity key ID that will sign PushDrop tokens (defaults to "1")
 - `options.overlayTopic?`: Optional custom overlay topic (defaults to "tm_apps")
 - `options.overlayService?`: Optional custom overlay service (defaults to "ls_apps")
 - `options.wallet?`: Optional pre-configured wallet
@@ -111,9 +110,10 @@ new AppCatalog(options: AppCatalogOptions)
 
 #### Methods
 
-- `publishApp(metadata: PublishedAppMetadata, opts?: { wallet?: WalletInterface })`: Publishes an app to the overlay network
-- `updateApp(prev: PublishedApp, newMetadata: PublishedAppMetadata, opts?: { wallet?: WalletInterface })`: Updates an existing app listing
-- `findApps(query?: AppCatalogQuery, opts?: { resolver?: LookupResolver, wallet?: WalletInterface, includeBeef?: boolean })`: Searches for apps based on the provided query
+- `publishApp(metadata: PublishedAppMetadata, opts?: { wallet?: WalletInterface }): Promise<Transaction | BroadcastResponse | BroadcastFailure>`: Publishes an app to the overlay network
+- `updateApp(prev: PublishedApp, newMetadata: PublishedAppMetadata): Promise<BroadcastResponse | BroadcastFailure>`: Updates an existing app listing
+- `removeApp(prev: PublishedApp): Promise<BroadcastResponse | BroadcastFailure>`: Removes an app listing from the overlay network
+- `findApps(query?: AppCatalogQuery, opts?: { resolver?: LookupResolver, wallet?: WalletInterface, includeBeef?: boolean }): Promise<PublishedApp[]>`: Searches for apps based on the provided query with support for pagination and sorting
 
 ## Types
 
