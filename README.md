@@ -26,7 +26,6 @@ import { AppCatalog } from 'metanet-apps'
 
 const catalog = new AppCatalog({
   // Optional parameters:
-  // keyID: 'your-identity-key-id',  // Defaults to '1'
   // overlayTopic: 'custom_topic',  // Defaults to 'tm_apps'
   // overlayService: 'custom_service', // Defaults to 'ls_apps'
   // networkPreset: 'mainnet', // or 'testnet', 'local'
