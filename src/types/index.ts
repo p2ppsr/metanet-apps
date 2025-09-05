@@ -1,4 +1,4 @@
-import { WalletInterface } from "@bsv/sdk"
+import { WalletInterface } from '@bsv/sdk'
 
 /* ────────────────────────────────────────────────────────────
  * Public types
@@ -13,7 +13,7 @@ export interface AppCatalogOptions {
   /** Optional pre‑configured wallet */
   wallet?: WalletInterface
   /** Optional network preset */
-  networkPreset?: "mainnet" | "testnet" | "local"
+  networkPreset?: 'mainnet' | 'testnet' | 'local'
   /** Optional broadcast options (defaults to false) */
   acceptDelayedBroadcast?: boolean
 }

@@ -29,15 +29,19 @@ export class AppCatalog {
   private readonly overlayTopic: string
   private readonly overlayService: string
   private readonly wallet: WalletInterface
-  private readonly networkPreset: "mainnet" | "testnet" | "local" | undefined
+  private readonly networkPreset: "mainnet" | "testnet" | "local"
   private readonly acceptDelayedBroadcast: boolean
+  private readonly lookupResolver: LookupResolver
+  private readonly topicBroadcaster: TopicBroadcaster
 
   constructor(opts: AppCatalogOptions) {
     this.overlayTopic = opts.overlayTopic ?? DEFAULT_OVERLAY_TOPIC
     this.overlayService = opts.overlayService ?? DEFAULT_LOOKUP_SERVICE
     this.wallet = opts.wallet ?? new WalletClient()
-    this.networkPreset = opts.networkPreset
+    this.networkPreset = opts.networkPreset ?? 'mainnet'
     this.acceptDelayedBroadcast = opts.acceptDelayedBroadcast ?? false
+    this.lookupResolver = new LookupResolver({ networkPreset: this.networkPreset })
+    this.topicBroadcaster = new TopicBroadcaster([this.overlayTopic], { networkPreset: this.networkPreset })
   }
 
   /* ──────────────────────────────  Publish  ───────────────────────────── */
@@ -83,10 +87,7 @@ export class AppCatalog {
     const transaction = Transaction.fromAtomicBEEF(tx)
 
     // --- 4. Broadcast through overlay -----------------------------------
-    const broadcaster = new TopicBroadcaster([this.overlayTopic], {
-      networkPreset: this.networkPreset ?? (await this.wallet.getNetwork({})).network
-    })
-    return broadcaster.broadcast(transaction)
+    return this.topicBroadcaster.broadcast(transaction)
   }
 
   /* ──────────────────────────────  Update  ────────────────────────────── */
@@ -158,10 +159,7 @@ export class AppCatalog {
     const transaction = Transaction.fromAtomicBEEF(tx)
 
     // --- 6. Broadcast through overlay -----------------------------------
-    const broadcaster = new TopicBroadcaster([this.overlayTopic], {
-      networkPreset: this.networkPreset ?? (await this.wallet.getNetwork({})).network
-    })
-    return await broadcaster.broadcast(transaction)
+    return await this.topicBroadcaster.broadcast(transaction)
   }
 
   /* ──────────────────────────────  Remove  ───────────────────────────── */
@@ -201,10 +199,7 @@ export class AppCatalog {
     const transaction = Transaction.fromAtomicBEEF(tx)
 
     // Broadcast to overlay
-    const broadcaster = new TopicBroadcaster([this.overlayTopic], {
-      networkPreset: this.networkPreset ?? (await this.wallet.getNetwork({})).network
-    })
-    return await broadcaster.broadcast(transaction)
+    return await this.topicBroadcaster.broadcast(transaction)
   }
 
   /* ──────────────────────────────  Find  ─────────────────────────────── */
@@ -246,10 +241,7 @@ export class AppCatalog {
     if (query.endDate) lookupQuery.endDate = `${query.endDate}T23:59:59.999Z`
 
     // --- 2. Resolve -----------------------------------------------------
-    const resolver =
-      opts.resolver ??
-      new LookupResolver({ networkPreset: this.networkPreset ?? (await wallet.getNetwork({})).network })
-
+    const resolver = opts.resolver ?? this.lookupResolver
     const answer = await resolver.query({ service: this.overlayService, query: lookupQuery })
 
     // --- 3. Parse answer ------------------------------------------------
